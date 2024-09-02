@@ -16,8 +16,8 @@ handler = WebhookHandler(os.getenv('handler'))
 
 # 连接 MongoDB
 client = MongoClient(os.getenv('mongo_uri'))
-db = client['line_bot_db']  # 你可以设置数据库名称为 line_bot_db
-collection = db['messages']  # 设置集合名称为 messages
+db = client['poker_hands']  # 你可以设置数据库名称为 line_bot_db
+collection = db['hands']  # 设置集合名称为 messages
 
 # 监听所有来自 /callback 的 POST 请求
 @app.route("/callback", methods=['POST'])
