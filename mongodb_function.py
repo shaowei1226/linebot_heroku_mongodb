@@ -2,11 +2,11 @@ import pymongo
 
 # 要獲得mongodb網址，請至mongodb網站申請帳號進行資料庫建立，網址　https://www.mongodb.com/
 # 獲取的網址方法之範例如圖： https://i.imgur.com/HLCk99r.png
-client = pymongo.MongoClient("自己的mongodb連線網址")
+client = pymongo.MongoClient("mongodb+srv://shaowei:<120129c3>@pj2.zqgckzk.mongodb.net/?retryWrites=true&w=majority&appName=PJ2")
 
 #第一個db的建立
-db = client['MongoClient']
-col = db['Database']
+db = client['poker_hands']
+col = db['hands']
 
 #判斷key是否在指定的dictionary當中，若有則return True
 def dicMemberCheck(key, dicObj):
