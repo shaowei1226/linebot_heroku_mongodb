@@ -1,127 +1,54 @@
 from flask import Flask, request, abort
+from linebot import LineBotApi, WebhookHandler
+from linebot.exceptions import InvalidSignatureError
+from linebot.models import MessageEvent, TextMessage, TextSendMessage
+from pymongo import MongoClient
+import os
+from dotenv import load_dotenv
 
-from linebot import (
-    LineBotApi, WebhookHandler
-)
-from linebot.exceptions import (
-    InvalidSignatureError
-)
-from linebot.models import *
-
-
-#======這裡是呼叫的檔案內容=====
-from message import *
-from new import *
-from Function import *
-from mongodb_function import *
-#======這裡是呼叫的檔案內容=====
-
-#======python的函數庫==========
-import  os
-#======python的函數庫==========
+load_dotenv()
 
 app = Flask(__name__)
-static_tmp_path = os.path.join(os.path.dirname(__file__), 'static', 'tmp')
-# Channel Access Token
-line_bot_api = LineBotApi('9mWn4D8PaS3TxkK0gu0GP6Nt6kKRrodbfJIJwaeiErYXWXe8mLi3bD3j7bv8Vp/hGoVCgD2o834MZzhKqCyPsNQpUQ8QKbV4YESxfWqnEWJk0oJQVcYUOG2MNIz9/H7xoZ94yrh+oOWglxkqSf5u5AdB04t89/1O/w1cDnyilFU=')
-# Channel Secret
-handler = WebhookHandler('e75e8f37511dd2cec1698b5410d067cc')
 
-# 監聽所有來自 /callback 的 Post Request
+# 初始化 Line Bot API 和 Webhook Handler
+line_bot_api = LineBotApi(os.getenv('line_bot_api'))
+handler = WebhookHandler(os.getenv('handler'))
+
+# 连接 MongoDB
+client = MongoClient(os.getenv('mongo_uri'))
+db = client['line_bot_db']  # 你可以设置数据库名称为 line_bot_db
+collection = db['messages']  # 设置集合名称为 messages
+
+# 监听所有来自 /callback 的 POST 请求
 @app.route("/callback", methods=['POST'])
 def callback():
-    # get X-Line-Signature header value
     signature = request.headers['X-Line-Signature']
-    # get request body as text
     body = request.get_data(as_text=True)
-    write_one_data(eval(body.replace('false','False')))
-    app.logger.info("Request body: " + body)
-    # handle webhook body
+
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
         abort(400)
+
     return 'OK'
 
-
-# 處理訊息
+# 处理收到的消息
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
-    msg = event.message.text
-    if '最新合作廠商' in msg:
-        message = imagemap_message()
-        line_bot_api.reply_message(event.reply_token, message)
-    elif '最新活動訊息' in msg:
-        message = buttons_message()
-        line_bot_api.reply_message(event.reply_token, message)
-    elif '註冊會員' in msg:
-        message = Confirm_Template()
-        line_bot_api.reply_message(event.reply_token, message)
-    elif '旋轉木馬' in msg:
-        message = Carousel_Template()
-        line_bot_api.reply_message(event.reply_token, message)
-    elif '圖片畫廊' in msg:
-        message = test()
-        line_bot_api.reply_message(event.reply_token, message)
-    elif '功能列表' in msg:
-        message = function_list()
-        line_bot_api.reply_message(event.reply_token, message)
+    user_id = event.source.user_id
+    user_message = event.message.text
+    
+    # 将消息保存到 MongoDB
+    record = {
+        "user_id": user_id,
+        "message": user_message
+    }
+    collection.insert_one(record)
+    
+    # 回应用户
+    reply_message = "您的信息已保存！"
+    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_message))
 
-    #======MongoDB操作範例======
-
-    elif '@讀取' in msg:
-        datas = read_many_datas()
-        datas_len = len(datas)
-        message = TextSendMessage(text=f'資料數量，一共{datas_len}條')
-        line_bot_api.reply_message(event.reply_token, message)
-
-    elif '@查詢' in msg:
-        datas = col_find('events')
-        message = TextSendMessage(text=str(datas))
-        line_bot_api.reply_message(event.reply_token, message)
-
-    elif '@對話紀錄' in msg:
-        datas = read_chat_records()
-        print(type(datas))
-        n = 0
-        text_list = []
-        for data in datas:
-            if '@' in data:
-                continue
-            else:
-                text_list.append(data)
-            n+=1
-        data_text = '\n'.join(text_list)
-        message = TextSendMessage(text=data_text[:5000])
-        line_bot_api.reply_message(event.reply_token, message)
-
-    elif '@刪除' in msg:
-        text = delete_all_data()
-        message = TextSendMessage(text=text)
-        line_bot_api.reply_message(event.reply_token, message)
-
-    #======MongoDB操作範例======
-
-    else:
-        message = TextSendMessage(text=msg)
-        line_bot_api.reply_message(event.reply_token, message)
-
-@handler.add(PostbackEvent)
-def handle_message(event):
-    print(event.postback.data)
-
-
-@handler.add(MemberJoinedEvent)
-def welcome(event):
-    uid = event.joined.members[0].user_id
-    gid = event.source.group_id
-    profile = line_bot_api.get_group_member_profile(gid, uid)
-    name = profile.display_name
-    message = TextSendMessage(text=f'{name}歡迎加入')
-    line_bot_api.reply_message(event.reply_token, message)
-        
-        
-import os
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)

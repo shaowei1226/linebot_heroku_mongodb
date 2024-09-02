@@ -1,6 +1,12 @@
 #這些是LINE官方開放的套件組合透過import來套用這個檔案上
 from linebot.models import *
 
+# 設定標頭資訊
+headers = {
+    "Authorization": "Bearer 9mWn4D8PaS3TxkK0gu0GP6Nt6kKRrodbfJIJwaeiErYXWXe8mLi3bD3j7bv8Vp/hGoVCgD2o834MZzhKqCyPsNQpUQ8QKbV4YESxfWqnEWJk0oJQVcYUOG2MNIz9/H7xoZ94yrh+oOWglxkqSf5u5AdB04t89/1O/w1cDnyilFU=",
+    "Content-Type": "application/json"
+}
+
 #ImagemapSendMessage(組圖訊息)
 def imagemap_message():
     message = ImagemapSendMessage(
